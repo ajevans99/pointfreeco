@@ -30,6 +30,12 @@ public struct Client {
       _ accessToken: GitHubAccessToken
     ) async throws -> GitHubUser
 
+  /// Initiates device authorization flow - returns device code and user code
+  public var initiateDeviceAuth: (_ clientId: ID, _ scope: String?) async throws -> DeviceAuthResponse
+  
+  /// Polls for device authorization completion - exchanges device code for access token
+  public var pollDeviceAuth: (_ clientId: ID, _ deviceCode: String) async throws -> AuthTokenResponse
+
   public struct AuthTokenResponse: Codable {
     public var accessToken: GitHubAccessToken
     public init(_ accessToken: GitHubAccessToken) {
@@ -37,6 +43,36 @@ public struct Client {
     }
     private enum CodingKeys: String, CodingKey {
       case accessToken = "access_token"
+    }
+  }
+  
+  public struct DeviceAuthResponse: Codable, Equatable {
+    public var deviceCode: String
+    public var userCode: String
+    public var verificationUri: String
+    public var expiresIn: Int
+    public var interval: Int
+    
+    public init(
+      deviceCode: String,
+      userCode: String,
+      verificationUri: String,
+      expiresIn: Int,
+      interval: Int
+    ) {
+      self.deviceCode = deviceCode
+      self.userCode = userCode
+      self.verificationUri = verificationUri
+      self.expiresIn = expiresIn
+      self.interval = interval
+    }
+    
+    private enum CodingKeys: String, CodingKey {
+      case deviceCode = "device_code"
+      case userCode = "user_code"
+      case verificationUri = "verification_uri"
+      case expiresIn = "expires_in"
+      case interval
     }
   }
 }
@@ -62,6 +98,18 @@ extension Client {
       fetchUserByUserID: { userID, accessToken in
         try await jsonDataTask(
           with: fetchGitHubUser(id: userID, with: accessToken), decoder: gitHubJsonDecoder)
+      },
+      initiateDeviceAuth: { clientId, scope in
+        try await jsonDataTask(
+          with: initiateGitHubDeviceAuth(clientId: clientId, scope: scope),
+          decoder: gitHubJsonDecoder
+        )
+      },
+      pollDeviceAuth: { clientId, deviceCode in
+        try await jsonDataTask(
+          with: pollGitHubDeviceAuth(clientId: clientId, deviceCode: deviceCode),
+          decoder: gitHubJsonDecoder
+        )
       }
     )
   }
@@ -83,6 +131,46 @@ func fetchGitHubAuthToken(
         "client_secret": clientSecret.rawValue,
         "code": code,
         "accept": "json",
+      ])
+    )
+  )
+  return DecodableHTTPClientRequest(request)
+}
+
+func initiateGitHubDeviceAuth(
+  clientId: Client.ID,
+  scope: String?
+) -> DecodableHTTPClientRequest<Client.DeviceAuthResponse> {
+  var request = HTTPClientRequest(url: "https://github.com/login/device/code")
+  request.method = .POST
+  request.headers.add(name: "accept", value: "application/json")
+  request.headers.add(name: "content-type", value: "application/json")
+  
+  var body: [String: String] = ["client_id": clientId.rawValue]
+  if let scope = scope {
+    body["scope"] = scope
+  }
+  
+  request.body = .bytes(
+    .init(data: try! gitHubJsonEncoder.encode(body))
+  )
+  return DecodableHTTPClientRequest(request)
+}
+
+func pollGitHubDeviceAuth(
+  clientId: Client.ID,
+  deviceCode: String
+) -> DecodableHTTPClientRequest<Client.AuthTokenResponse> {
+  var request = HTTPClientRequest(url: "https://github.com/login/oauth/access_token")
+  request.method = .POST
+  request.headers.add(name: "accept", value: "application/json")
+  request.headers.add(name: "content-type", value: "application/json")
+  request.body = .bytes(
+    .init(
+      data: try! gitHubJsonEncoder.encode([
+        "client_id": clientId.rawValue,
+        "device_code": deviceCode,
+        "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
       ])
     )
   )
