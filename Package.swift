@@ -6,9 +6,12 @@ import PackageDescription
 var package = Package(
   name: "PointFree",
   platforms: [
-    .macOS(.v14)
+    .iOS(.v17),
+    .macOS(.v14),
+    .tvOS(.v17),
   ],
   products: [
+    .library(name: "App", targets: ["App"]),
     .executable(name: "Runner", targets: ["Runner"]),
     .executable(name: "Server", targets: ["Server"]),
     .library(name: "Cloudflare", targets: ["Cloudflare"]),
@@ -50,6 +53,7 @@ var package = Package(
     .package(url: "https://github.com/vapor/postgres-kit", from: "2.12.0"),
     .package(url: "https://github.com/vapor/sql-kit", exact: "3.28.0"),
     .package(url: "https://github.com/pointfreeco/swift-case-paths", from: "1.0.0"),
+    .package(url: "https://github.com/pointfreeco/swift-composable-architecture", from: "1.23.0"),
     .package(url: "https://github.com/pointfreeco/swift-custom-dump", from: "1.3.0"),
     .package(url: "https://github.com/pointfreeco/swift-dependencies", from: "1.3.1"),
     .package(url: "https://github.com/pointfreeco/swift-html", revision: "14d01d1"),
@@ -62,6 +66,15 @@ var package = Package(
     .package(url: "https://github.com/pointfreeco/xctest-dynamic-overlay", from: "1.2.2"),
   ],
   targets: [
+    .target(
+      name: "App",
+      dependencies: [
+        "GitHub",
+        "Models",
+        "Transcripts",
+        .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+      ]
+    ),
     .target(
       name: "Cloudflare",
       dependencies: [
@@ -557,6 +570,14 @@ var package = Package(
 
     .target(
       name: "WebPreview"
+    ),
+
+    .testTarget(
+      name: "AppTests",
+      dependencies: [
+        "App",
+        .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
+      ]
     ),
   ],
   swiftLanguageModes: [.v5]
