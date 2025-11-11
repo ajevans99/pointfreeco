@@ -1,14 +1,14 @@
 import ComposableArchitecture
 import Foundation
 import Models
-import Transcripts
 
 @Reducer
 public struct EpisodesFeature {
   @ObservableState
   public struct State: Equatable {
-    public var episodes: [Episode] = []
+    public var episodes: [ApiClient.EpisodeListItem] = []
     public var isLoading = false
+    public var errorMessage: String?
     @Presents public var selectedEpisode: EpisodeDetailFeature.State?
     
     public init() {}
@@ -16,12 +16,13 @@ public struct EpisodesFeature {
   
   public enum Action {
     case task
-    case episodesLoaded([Episode])
-    case episodeTapped(Episode)
+    case episodesLoaded([ApiClient.EpisodeListItem])
+    case episodesFailed(Error)
+    case episodeTapped(Episode.ID)
     case selectedEpisode(PresentationAction<EpisodeDetailFeature.Action>)
   }
   
-  @Dependency(\.collections) var collections
+  @Dependency(\.apiClient) var apiClient
   
   public init() {}
   
@@ -30,9 +31,14 @@ public struct EpisodesFeature {
       switch action {
       case .task:
         state.isLoading = true
+        state.errorMessage = nil
         return .run { send in
-          let episodes = Episode.all
-          await send(.episodesLoaded(episodes))
+          do {
+            let episodes = try await apiClient.fetchEpisodes()
+            await send(.episodesLoaded(episodes))
+          } catch {
+            await send(.episodesFailed(error))
+          }
         }
         
       case let .episodesLoaded(episodes):
@@ -40,8 +46,13 @@ public struct EpisodesFeature {
         state.isLoading = false
         return .none
         
-      case let .episodeTapped(episode):
-        state.selectedEpisode = EpisodeDetailFeature.State(episode: episode)
+      case let .episodesFailed(error):
+        state.isLoading = false
+        state.errorMessage = error.localizedDescription
+        return .none
+        
+      case let .episodeTapped(id):
+        state.selectedEpisode = EpisodeDetailFeature.State(episodeId: id)
         return .none
         
       case .selectedEpisode:

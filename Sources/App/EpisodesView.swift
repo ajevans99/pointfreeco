@@ -15,12 +15,27 @@ public struct EpisodesView: View {
         if store.isLoading {
           ProgressView()
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if let errorMessage = store.errorMessage {
+          VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle")
+              .font(.largeTitle)
+              .foregroundColor(.secondary)
+            Text("Failed to load episodes")
+              .font(.headline)
+            Text(errorMessage)
+              .font(.caption)
+              .foregroundColor(.secondary)
+            Button("Retry") {
+              store.send(.task)
+            }
+          }
+          .padding()
         } else {
           LazyVStack(spacing: 20) {
             ForEach(store.episodes) { episode in
               EpisodeCard(episode: episode)
                 .onTapGesture {
-                  store.send(.episodeTapped(episode))
+                  store.send(.episodeTapped(episode.id))
                 }
             }
           }
@@ -41,7 +56,7 @@ public struct EpisodesView: View {
 }
 
 struct EpisodeCard: View {
-  let episode: Episode
+  let episode: ApiClient.EpisodeListItem
   
   var body: some View {
     VStack(alignment: .leading, spacing: 12) {
@@ -62,7 +77,7 @@ struct EpisodeCard: View {
           .font(.caption)
           .foregroundColor(.secondary)
         
-        Text(episode.fullTitle)
+        Text(episode.title)
           .font(.title3)
           .fontWeight(.semibold)
           .lineLimit(2)

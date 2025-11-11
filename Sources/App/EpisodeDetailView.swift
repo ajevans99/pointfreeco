@@ -13,50 +13,71 @@ public struct EpisodeDetailView: View {
   
   public var body: some View {
     NavigationStack {
-      ScrollView {
-        VStack(alignment: .leading, spacing: 20) {
-          // Video Player
-          VideoPlayerView(episode: store.episode, isPlaying: store.isPlaying)
-            .aspectRatio(16/9, contentMode: .fit)
-            .frame(maxWidth: .infinity)
-          
-          VStack(alignment: .leading, spacing: 16) {
-            Text("Episode \(store.episode.sequence.rawValue)")
+      Group {
+        if store.isLoading {
+          ProgressView()
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if let errorMessage = store.errorMessage {
+          VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle")
+              .font(.largeTitle)
+              .foregroundColor(.secondary)
+            Text("Failed to load episode")
+              .font(.headline)
+            Text(errorMessage)
               .font(.caption)
               .foregroundColor(.secondary)
-            
-            Text(store.episode.fullTitle)
-              .font(.title2)
-              .fontWeight(.bold)
-            
-            HStack {
-              Label("\(store.episode.length.rawValue / 60) min", systemImage: "clock")
-              Spacer()
-              Text(store.episode.publishedAt, style: .date)
-            }
-            .font(.caption)
-            .foregroundColor(.secondary)
-            
-            Divider()
-            
-            Text(store.episode.blurb)
-              .font(.body)
-            
-            Button(action: {
-              store.send(.playTapped)
-            }) {
-              HStack {
-                Image(systemName: store.isPlaying ? "pause.fill" : "play.fill")
-                Text(store.isPlaying ? "Pause" : "Play")
-              }
-              .frame(maxWidth: .infinity)
-              .padding()
-              .background(Color.accentColor)
-              .foregroundColor(.white)
-              .cornerRadius(12)
+            Button("Retry") {
+              store.send(.task)
             }
           }
-          .padding()
+        } else if let episode = store.episode {
+          ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+              // Video Player
+              VideoPlayerView(video: episode.video, isPlaying: store.isPlaying)
+                .aspectRatio(16/9, contentMode: .fit)
+                .frame(maxWidth: .infinity)
+              
+              VStack(alignment: .leading, spacing: 16) {
+                Text("Episode \(episode.sequence.rawValue)")
+                  .font(.caption)
+                  .foregroundColor(.secondary)
+                
+                Text(episode.title)
+                  .font(.title2)
+                  .fontWeight(.bold)
+                
+                HStack {
+                  Label("\(episode.length.rawValue / 60) min", systemImage: "clock")
+                  Spacer()
+                  Text(episode.publishedAt, style: .date)
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
+                
+                Divider()
+                
+                Text(episode.blurb)
+                  .font(.body)
+                
+                Button(action: {
+                  store.send(.playTapped)
+                }) {
+                  HStack {
+                    Image(systemName: store.isPlaying ? "pause.fill" : "play.fill")
+                    Text(store.isPlaying ? "Pause" : "Play")
+                  }
+                  .frame(maxWidth: .infinity)
+                  .padding()
+                  .background(Color.accentColor)
+                  .foregroundColor(.white)
+                  .cornerRadius(12)
+                }
+              }
+              .padding()
+            }
+          }
         }
       }
       .navigationTitle("Episode Detail")
@@ -68,18 +89,21 @@ public struct EpisodeDetailView: View {
           }
         }
       }
+      .task {
+        store.send(.task)
+      }
     }
   }
 }
 
 struct VideoPlayerView: View {
-  let episode: Episode
+  let video: Episode.Video
   let isPlaying: Bool
   
   var body: some View {
     ZStack {
       // Extract video URL based on the download URL type
-      if case let .s3(hd1080, _, _) = episode.trailerVideo.downloadUrl,
+      if case let .s3(hd1080, _, _) = video.downloadUrl,
          let videoURL = URL(string: "https://pointfreeco-episodes-processed.s3.amazonaws.com/\(hd1080).mp4") {
         VideoPlayer(player: AVPlayer(url: videoURL))
       } else {
@@ -103,7 +127,7 @@ struct VideoPlayerView: View {
   EpisodeDetailView(
     store: Store(
       initialState: EpisodeDetailFeature.State(
-        episode: .mock
+        episodeId: Episode.ID(rawValue: 1)
       )
     ) {
       EpisodeDetailFeature()

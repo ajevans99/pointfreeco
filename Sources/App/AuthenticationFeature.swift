@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import Foundation
 import GitHub
+import PointFreeRouter
 
 @Reducer
 public struct AuthenticationFeature {
@@ -10,17 +11,20 @@ public struct AuthenticationFeature {
     public var isLoading = false
     public var gitHubUser: GitHubUser?
     public var errorMessage: String?
+    public var authorizationURL: URL?
     
     public init() {}
   }
   
   public enum Action {
     case loginTapped
+    case handleOAuthCallback(code: String)
     case loginResponse(Result<GitHubUser, Error>)
     case logoutTapped
   }
   
   @Dependency(\.gitHub) var gitHub
+  @Dependency(\.siteRouter) var siteRouter
   
   public init() {}
   
@@ -30,23 +34,36 @@ public struct AuthenticationFeature {
       case .loginTapped:
         state.isLoading = true
         state.errorMessage = nil
-        // In a real implementation, this would trigger OAuth flow
-        // For now, we'll just simulate a login
+        
+        // Generate GitHub OAuth URL
+        // In a real app, this would open the browser or SafariViewController
+        // The redirect URL should match your app's URL scheme (e.g., pointfree://auth/github/callback)
+        let authURL = siteRouter.url(for: .auth(.gitHubAuth(redirect: nil)))
+        if let url = URL(string: authURL) {
+          state.authorizationURL = url
+        }
+        
+        // Note: The actual OAuth flow would be:
+        // 1. Open authURL in browser/SafariViewController
+        // 2. User authorizes on GitHub
+        // 3. GitHub redirects back to your app with a code
+        // 4. Handle the callback with handleOAuthCallback action
+        
+        return .none
+        
+      case let .handleOAuthCallback(code):
+        state.isLoading = true
+        state.errorMessage = nil
+        
         return .run { send in
-          // Simulate GitHub OAuth flow
-          // In production, this would:
-          // 1. Open GitHub OAuth URL
-          // 2. Handle callback with code
-          // 3. Exchange code for access token
-          // 4. Fetch user with access token
           do {
-            // This is a placeholder - real implementation would use the GitHub client
-            // with actual OAuth flow
-            let mockUser = GitHubUser(
-              id: .init(rawValue: 123),
-              name: "Demo User"
-            )
-            await send(.loginResponse(.success(mockUser)))
+            // Exchange code for access token
+            let tokenResponse = try await gitHub.fetchAuthToken(code)
+            
+            // Fetch user details with the access token
+            let user = try await gitHub.fetchUser(tokenResponse.accessToken)
+            
+            await send(.loginResponse(.success(user)))
           } catch {
             await send(.loginResponse(.failure(error)))
           }
@@ -56,16 +73,19 @@ public struct AuthenticationFeature {
         state.isLoading = false
         state.isAuthenticated = true
         state.gitHubUser = user
+        state.authorizationURL = nil
         return .none
         
       case let .loginResponse(.failure(error)):
         state.isLoading = false
         state.errorMessage = error.localizedDescription
+        state.authorizationURL = nil
         return .none
         
       case .logoutTapped:
         state.isAuthenticated = false
         state.gitHubUser = nil
+        state.authorizationURL = nil
         return .none
       }
     }

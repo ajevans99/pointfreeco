@@ -71,7 +71,7 @@ var package = Package(
       dependencies: [
         "GitHub",
         "Models",
-        "Transcripts",
+        "PointFreeRouter",
         .product(name: "ComposableArchitecture", package: "swift-composable-architecture"),
       ]
     ),
