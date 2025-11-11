@@ -99,7 +99,7 @@ struct CollectionCard: View {
       }
       .padding(.horizontal, 4)
     }
-    .background(Color(uiColor: .systemBackground))
+    .background(Color(.systemBackground))
     .cornerRadius(16)
     .shadow(radius: 4)
   }

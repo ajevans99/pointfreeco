@@ -89,7 +89,7 @@ public struct CollectionDetailView: View {
                         .foregroundColor(.secondary)
                     }
                     .padding()
-                    .background(Color(uiColor: .secondarySystemBackground))
+                    .background(Color(.secondarySystemBackground))
                     .cornerRadius(12)
                   }
                   .buttonStyle(.plain)

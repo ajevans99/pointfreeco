@@ -78,7 +78,9 @@ struct VideoPlayerView: View {
   
   var body: some View {
     ZStack {
-      if let videoURL = URL(string: episode.trailerVideo.downloadUrls.hd1080) {
+      // Extract video URL based on the download URL type
+      if case let .s3(hd1080, _, _) = episode.trailerVideo.downloadUrl,
+         let videoURL = URL(string: "https://pointfreeco-episodes-processed.s3.amazonaws.com/\(hd1080).mp4") {
         VideoPlayer(player: AVPlayer(url: videoURL))
       } else {
         Rectangle()

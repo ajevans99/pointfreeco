@@ -20,7 +20,7 @@ public struct AuthenticationFeature {
     case logoutTapped
   }
   
-  @Dependency(\.github) var github
+  @Dependency(\.gitHub) var gitHub
   
   public init() {}
   
