@@ -25,6 +25,14 @@ public struct AppView: View {
         Label("Categories", systemImage: "square.grid.2x2.fill")
       }
       .tag(AppFeature.State.Tab.categories)
+      
+      AuthenticationView(
+        store: store.scope(state: \.authentication, action: \.authentication)
+      )
+      .tabItem {
+        Label("Account", systemImage: "person.circle.fill")
+      }
+      .tag(AppFeature.State.Tab.account)
     }
   }
 }

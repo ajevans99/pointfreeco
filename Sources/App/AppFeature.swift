@@ -16,6 +16,7 @@ public struct AppFeature {
     public enum Tab: Equatable {
       case episodes
       case categories
+      case account
     }
   }
   
